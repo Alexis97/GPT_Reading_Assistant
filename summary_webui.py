@@ -260,7 +260,7 @@ def main():
       
         # * Trigger the events
         summary_btn.click(
-            fn=partial(summarize_document, doc_reader, debug=False),
+            fn=partial(summarize_document, doc_reader, debug=True),
             inputs=[file_input, map_prompt_template, combine_prompt_template],
             outputs=[chunks_summary_output, summary_output],
         )
