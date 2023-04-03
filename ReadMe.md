@@ -14,7 +14,7 @@ Getting Started
 GPT-Book Reader offers a high degree of customization by allowing users to modify the prompt templates in LangChain, catering to their specific needs and language preferences.
 
 ## Demo
-![GPT-Book Reader Demo](assets/demo_summary.png)
+![GPT-Book Reader Demo](figures/demo_summary.png)
 
 <!-- ## Contributing
 [placeholder for contribution guidelines, code of conduct, and any prerequisites for contributing]
