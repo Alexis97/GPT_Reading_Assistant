@@ -33,8 +33,9 @@ class DocumentReader(object):
         
     def load(
             self, doc_path, collection_name='langchain',
-            db_dir='db', chunk_size=1000, chunk_overlap=0
-             ):
+            db_dir='db', chunk_size=1000, chunk_overlap=0,
+            debug=False
+            ):
         """ This function loads a document. """
         loader = UnstructuredWordDocumentLoader(doc_path)
         documents = loader.load()
@@ -44,9 +45,12 @@ class DocumentReader(object):
         embedding = OpenAIEmbeddings(model='text-embedding-ada-002')
 
         # create the vector store (if it doesn't exist)
-        vectordb  = Chroma.from_documents(
-            documents=chunks, embedding=embedding, persist_directory=db_dir, collection_name=collection_name
-            )
+        if debug:
+            vectordb = Chroma(persist_directory=db_dir, embedding_function=embedding, collection_name=collection_name)
+        else:
+            vectordb  = Chroma.from_documents(
+                documents=chunks, embedding=embedding, persist_directory=db_dir, collection_name=collection_name
+                )
 
         return chunks, vectordb
     
@@ -179,7 +183,7 @@ def ask_document(
     """
     doc_path = file.name
 
-    chunks, vectordb = doc_reader.load(doc_path)
+    chunks, vectordb = doc_reader.load(doc_path, debug=debug)
 
     answer, source_chunks = doc_reader.ask(
         query, vectordb,
@@ -189,15 +193,17 @@ def ask_document(
     # Combine the source document and answer side by side in HTML
     side_by_side_html = "<table style='width: 100%; border-collapse: collapse;'>"
     html = ""
-    for chunk in source_chunks:
+    for chunk_id, chunk in enumerate(source_chunks):
         html += "<p>" + chunk.page_content.replace("\n\n", "</p><p>").replace("\n", "<br>") + "</p>"
+        html += "<hr>" if chunk_id < len(source_chunks) - 1 else ""
+
     side_by_side_html += "<tr>"
     side_by_side_html += f"<td style='width: 50%; padding: 10px; border: 1px solid #ccc;'>{html}</td>"
     side_by_side_html += f"<td style='width: 50%; padding: 10px; border: 1px solid #ccc;'>{answer}</td>"
     side_by_side_html += "</tr>"
     side_by_side_html += "</table>"
 
-    return side_by_side_html
+    return side_by_side_html, answer
 
 
 def main():
@@ -226,13 +232,20 @@ def main():
         with gr.Tab(label="Ask"):
             with gr.Row(scale=1):
                 with gr.Column():
-                    ask_input = gr.inputs.Textbox(label="Ask a question")
+                    ask_input = gr.inputs.Textbox(
+                        label="Ask a question",
+                        default="在这篇文章中，作者如何评价《尘缘》？"
+                        )
 
                 with gr.Column():
                     ask_btn = gr.Button("🤔Ask")
-            with gr.Row(scale=2):
-                ask_output = gr.HTML(
-                    label="Answer", elem_classes='output', elem_id='ask_output',
+            with gr.Row(scale=1):
+                with gr.Column():
+                    ask_output = gr.outputs.Textbox(label="Answer")
+            with gr.Row(scale=5):
+                chunks_ask_output = gr.HTML(
+                    label="Source Documents to Answer", 
+                    elem_classes='output', elem_id='ask_output',
                     )
 
         with gr.Tab(label="Options"):
@@ -247,7 +260,7 @@ def main():
       
         # * Trigger the events
         summary_btn.click(
-            fn=partial(summarize_document, doc_reader, debug=True),
+            fn=partial(summarize_document, doc_reader, debug=False),
             inputs=[file_input, map_prompt_template, combine_prompt_template],
             outputs=[chunks_summary_output, summary_output],
         )
@@ -255,7 +268,7 @@ def main():
         ask_btn.click(
             fn=partial(ask_document, doc_reader, debug=True),
             inputs=[file_input, ask_input, query_prompt_template],
-            outputs=[ask_output],
+            outputs=[chunks_ask_output, ask_output],
         )
 
 
