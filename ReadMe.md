@@ -4,10 +4,11 @@
 GPT-Book Reader is a powerful app that enables reading, summarizing, and translating long texts using the cutting-edge GPT technology. It leverages the vectorstore approach provided in LangChain Index to deliver an enhanced user experience and improve support for Chinese content.
 
 ## Features
-Translation: [placeholder for a brief description or a screenshot of the translation feature]
-Content-Based Answer Retrieval: Efficiently find relevant answers and information from within long texts.
-Long Text Summarization: Generate concise summaries of lengthy documents to save your time and effort.
-Getting Started
+- Content-Based Answer Retrieval: Efficiently find relevant answers and information from within long texts.
+- Long Text Summarization: Generate concise summaries of lengthy documents to save your time and effort.
+- Translation: Translate long texts to your preferred language with a single click.
+
+## Getting Started
 [placeholder for installation, setup, and basic usage instructions]
 
 ## Customization
