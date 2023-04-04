@@ -97,7 +97,7 @@ def main():
                 with gr.Column():
                     ask_input = gr.inputs.Textbox(
                         label="Ask a question",
-                        default="在这篇文章中，作者如何评价《尘缘》？"
+                        # default="作者如何评价这篇小说？"
                         )
 
                 with gr.Column():
