@@ -9,7 +9,11 @@ GPT-Book Reader is a powerful app that enables reading, summarizing, and transla
 - Translation: Translate long texts to your preferred language with a single click.
 
 ## Getting Started
-[placeholder for installation, setup, and basic usage instructions]
+To get started with this project, you’ll need to install the required packages. You can do this by following these steps:
+
+1. Make sure you have `pip` installed. If you don’t have it installed, you can follow the instructions [here](https://pip.pypa.io/en/stable/installing/) to install it.
+2. Install the required packages by running the command `pip install -r requirements.txt`.
+3. Once you have installed the required packages, you can launch the web UI by running the command `python webui.py`.
 
 ## Customization
 GPT-Book Reader offers a high degree of customization by allowing users to modify the prompt templates in LangChain, catering to their specific needs and language preferences.

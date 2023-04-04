@@ -1,0 +1,5 @@
+Gradio
+LangChain
+mistune
+unstructured>=0.4.11
+pdfminer
