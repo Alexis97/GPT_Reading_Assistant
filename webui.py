@@ -29,6 +29,7 @@ def summarize_document(
 
     # Combine the original paragraphs and summaries side by side in HTML
     side_by_side_html = generate_side_by_side_html(chunk_summaries)
+    # side_by_side_md = generate_side_by_side_markdown(chunk_summaries)
     
     return side_by_side_html, total_summary
 
@@ -109,6 +110,7 @@ def main():
                     label="Source Documents to Answer", 
                     elem_classes='output', elem_id='ask_output',
                     )
+                
 
         # templates = gr.State({})
         
@@ -117,55 +119,62 @@ def main():
                 with gr.Row():
                     summary_option = gr.inputs.Radio(
                         label="Summary Option",
-                        choices =['map_reduced', 'refine'],
+                        choices =['map_reduce', 'refine', 'translate'],
                         # label=["分段摘要", "逐步总结"],
-                        default="map_reduced",
+                        default="map_reduce",
                         )
                 with gr.Row():
+                    
                     with gr.Tab(label="Map-Reduce Options") as map_reduce_tab:
                         with gr.Column():
-                            map_prompt_template = gr.inputs.Textbox(label="Map Prompt Template", default=MAP_PROMPT_TEMPLATE, lines=5)
+                            map_prompt_template = gr.Textbox(label="Map Prompt Template", value=MAP_PROMPT_TEMPLATE, lines=5, interactive=True)
                         with gr.Column():
-                            combine_prompt_template = gr.inputs.Textbox(label="Combine Prompt Template", default=COMBINE_PROMPT_TEMPLATE, lines=5)
+                            combine_prompt_template = gr.Textbox(label="Combine Prompt Template", value=COMBINE_PROMPT_TEMPLATE, lines=5, interactive=True)
                     with gr.Tab(label="Refine Options") as refine_tab:
                         with gr.Column():
-                            refine_initial_prompt_template = gr.inputs.Textbox(label="Initial Prompt Template", default=PROPOSAL_REFINE_INITIAL_TEMPLATE, lines=5)
+                            refine_initial_prompt_template = gr.Textbox(label="Initial Prompt Template", value=PROPOSAL_REFINE_INITIAL_TEMPLATE, lines=5, interactive=True)
                         with gr.Column():
-                            refine_prompt_template = gr.inputs.Textbox(label="Refine Prompt Template", default=PROPOSAL_REFINE_TEMPLATE, lines=5)
+                            refine_prompt_template = gr.Textbox(label="Refine Prompt Template", value=PROPOSAL_REFINE_TEMPLATE, lines=5, interactive=True)
 
-            with gr.Row(label="Question Answering Options"):
-                with gr.Column():
-                    query_prompt_template = gr.inputs.Textbox(label="Query Prompt Template", default=QUERY_PROMPT_TEMPLATE, lines=5)
+                    with gr.Tab(label="Trasnlation Options"):
+                        with gr.Column():
+                            translate_prompt_template = gr.Textbox(label="Translate Prompt Template", value=TRANSLATE_PROMPT_TEMPLATE, lines=5, interactive=True)
+
+
+                    with gr.Tab(label="Question Answering Options"):
+                        with gr.Column():
+                            query_prompt_template = gr.Textbox(label="Query Prompt Template", value=QUERY_PROMPT_TEMPLATE, lines=5)
 
         templates = gr.State({
             'map_prompt_template': map_prompt_template,
             'combine_prompt_template': combine_prompt_template,
             'refine_initial_prompt_template': refine_initial_prompt_template,
             'refine_prompt_template': refine_prompt_template,
+            'translate_prompt_template': translate_prompt_template,
             'query_prompt_template': query_prompt_template,
             })
         
         
         # * Trigger the events
-        def update_tabs(summary_option, map_reduce_tab, refine_tab):
-            if summary_option == 'map_reduced':
-                return gr.update(map_reduce_tab, visible=True), gr.update(refine_tab, visible=False)
-            else:
-                return gr.update(map_reduce_tab, visible=False), gr.update(refine_tab, visible=True)
+        # def update_tabs(summary_option, map_reduce_tab, refine_tab):
+        #     if summary_option == 'map_reduced':
+        #         return gr.update(map_reduce_tab, visible=True), gr.update(refine_tab, visible=False)
+        #     else:
+        #         return gr.update(map_reduce_tab, visible=False), gr.update(refine_tab, visible=True)
             
-        summary_option.change(
-            fn=update_tabs,
-            inputs=[summary_option, map_reduce_tab, refine_tab],
-            outputs=[map_reduce_tab, refine_tab])
+        # summary_option.change(
+        #     fn=update_tabs,
+        #     inputs=[summary_option, map_reduce_tab, refine_tab],
+        #     outputs=[map_reduce_tab, refine_tab])
 
         summary_btn.click(
-            fn=partial(summarize_document, doc_reader, debug=True),
+            fn=partial(summarize_document, doc_reader, debug=False),
             inputs=[file_input, templates, summary_option],
             outputs=[chunks_summary_output, summary_output],
         )
 
         ask_btn.click(
-            fn=partial(ask_document, doc_reader, debug=True),
+            fn=partial(ask_document, doc_reader, debug=False),
             inputs=[file_input, ask_input, query_prompt_template],
             outputs=[chunks_ask_output, ask_output],
         )

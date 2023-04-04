@@ -6,6 +6,8 @@ MAP_PROMPT_TEMPLATE="""请用中文简要总结以下内容:
 
 简要总结:"""
 
+
+
 COMBINE_PROMPT_TEMPLATE = """以下内容是对一篇文章的逐个部分的总结，请整理这些段落总结，形成一篇完整的文章总结，注意在总结中不要出现第一部分、第二部分等描述，要让读者感觉这是一篇完整的文章:
 
 
@@ -88,5 +90,11 @@ We have the opportunity to refine the existing summary (only if needed) with som
 {text}
 --------------
 
-Given the new context, refine the original summary. If the context isn't useful, return the original summary.
+Given the new context, refine the original summary. If the context is not useful, you must copy the original summary (very important!).
 """
+
+TRANSLATE_PROMPT_TEMPLATE = """请用中文通顺准确地翻译以下内容:
+
+"{text}"
+
+翻译:"""

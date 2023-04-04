@@ -1,6 +1,7 @@
 import socket
 from contextlib import closing
 import threading, webbrowser, time
+import mistune
 
 # * Set up the port
 def find_free_port():
@@ -29,18 +30,38 @@ def hide_middle_chars(s):
 
 def generate_side_by_side_html(chunk_summaries):
     """ Generate the side-by-side HTML for the summary and the source document."""
-    
+    markdown = mistune.create_markdown()
+
     side_by_side_html = "<table style='width: 100%; border-collapse: collapse;'>"
     for element in chunk_summaries:
         chunk_content = element["chunk_content"]
         summary = element["chunk_summary"]
 
         html = "<p>" + chunk_content.replace("\n\n", "</p><p>").replace("\n", "<br>") + "</p>"
+        summary_html = markdown(summary)
 
         side_by_side_html += "<tr>"
         side_by_side_html += f"<td style='width: 50%; padding: 10px; border: 1px solid #ccc;'>{html}</td>"
-        side_by_side_html += f"<td style='width: 50%; padding: 10px; border: 1px solid #ccc;'>{summary}</td>"
+        side_by_side_html += f"<td style='width: 50%; padding: 10px; border: 1px solid #ccc;'>{summary_html}</td>"
         side_by_side_html += "</tr>"
     side_by_side_html += "</table>"
 
     return side_by_side_html
+
+def generate_side_by_side_markdown(chunk_summaries):
+    """ Generate the side-by-side markdown for the summary and the source document."""
+    
+    side_by_side_markdown = "| Source Document | Summary |\n"
+    side_by_side_markdown += "| --- | --- |\n"
+
+    for element in chunk_summaries:
+        chunk_content = element["chunk_content"]
+        summary = element["chunk_summary"]
+
+        markdown_chunk_content = "<p>" + chunk_content.replace("\n\n", "</p><p>").replace("\n", "<br>") + "</p>"
+        markdown_summary = summary.replace("\n\n", "\n\n\n").replace("\n", "  \n")
+
+        side_by_side_markdown += f"| {markdown_chunk_content} | {markdown_summary} |\n"
+
+    
+    return side_by_side_markdown
