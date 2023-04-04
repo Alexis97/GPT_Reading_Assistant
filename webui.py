@@ -13,61 +13,43 @@ from prompts import *
 ###
 
 def summarize_document(
-        doc_reader, file, 
-        map_prompt_template=MAP_PROMPT_TEMPLATE,
-        combine_prompt_template=COMBINE_PROMPT_TEMPLATE,
+        doc_reader, file, templates, summary_option,
         debug=False
         ):
     """ This function summarizes a document. 
     
     """
-    doc_path = file.name
+    # Convert the templates from Gradio to a dictionary
+    templates_dict = {k: v.value for k, v in templates.items()}
 
+    doc_path = file.name
     
-    if debug:    
-        # * [DEBUG] load the summary from a local summary file
-        with open(os.path.join(doc_reader.summary_dir, "total_summary.json"), "r") as f:
-            data = json.load(f)
-            total_summary = data["total_summary"]
-            chunk_summaries = data["chunk_summaries"]
-    else:
-        chunks, vectordb = doc_reader.load(doc_path)
-        total_summary, chunk_summaries = doc_reader.summarize(chunks, map_prompt_template, combine_prompt_template)
+    chunks, vectordb = doc_reader.load(doc_path, debug=debug)
+    total_summary, chunk_summaries = doc_reader.summarize(chunks, templates_dict, summary_option=summary_option, debug=debug)
 
     # Combine the original paragraphs and summaries side by side in HTML
-    side_by_side_html = "<table style='width: 100%; border-collapse: collapse;'>"
-    for element in chunk_summaries:
-        chunk_content = element["chunk_content"]
-        summary = element["chunk_summary"]
-
-        # soup = BeautifulSoup(chunk_content, 'html.parser')
-        # paragraphs = soup.prettify()
-        html = "<p>" + chunk_content.replace("\n\n", "</p><p>").replace("\n", "<br>") + "</p>"
-
-        side_by_side_html += "<tr>"
-        side_by_side_html += f"<td style='width: 50%; padding: 10px; border: 1px solid #ccc;'>{html}</td>"
-        side_by_side_html += f"<td style='width: 50%; padding: 10px; border: 1px solid #ccc;'>{summary}</td>"
-        side_by_side_html += "</tr>"
-    side_by_side_html += "</table>"
+    side_by_side_html = generate_side_by_side_html(chunk_summaries)
     
     return side_by_side_html, total_summary
 
 
 def ask_document(
-        doc_reader, file, query,
-        query_prompt_template=QUERY_PROMPT_TEMPLATE,
+        doc_reader, file, query, templates,
         debug=False
         ):
     """ This function answers a question about a document.
     
     """
+    # Convert the templates from Gradio to a dictionary
+    templates_dict = {k: v.value for k, v in templates.items()}
+
     doc_path = file.name
 
     chunks, vectordb = doc_reader.load(doc_path, debug=debug)
 
     answer, source_chunks = doc_reader.ask(
         query, vectordb,
-        query_prompt_template=query_prompt_template,
+        query_prompt_template=templates_dict['query_prompt_template'],
         )
 
     # Combine the source document and answer side by side in HTML
@@ -85,13 +67,6 @@ def ask_document(
 
     return side_by_side_html, answer
 
-def revise_document(
-        doc_reader, file, 
-        map_prompt_template=MAP_PROMPT_TEMPLATE,
-        combine_prompt_template=COMBINE_PROMPT_TEMPLATE,
-        debug=False
-        ):
-    pass
 
 def main():
     # * Initialize the document reader
@@ -135,20 +110,57 @@ def main():
                     elem_classes='output', elem_id='ask_output',
                     )
 
+        # templates = gr.State({})
+        
         with gr.Tab(label="Options"):
             with gr.Row(label="Summarization Options"):
-                with gr.Column():
-                    map_prompt_template = gr.inputs.Textbox(label="Map Prompt Template", default=MAP_PROMPT_TEMPLATE)
-                with gr.Column():
-                    combine_prompt_template = gr.inputs.Textbox(label="Combine Prompt Template", default=COMBINE_PROMPT_TEMPLATE).style(height="50%")
+                with gr.Row():
+                    summary_option = gr.inputs.Radio(
+                        label="Summary Option",
+                        choices =['map_reduced', 'refine'],
+                        # label=["分段摘要", "逐步总结"],
+                        default="map_reduced",
+                        )
+                with gr.Row():
+                    with gr.Tab(label="Map-Reduce Options") as map_reduce_tab:
+                        with gr.Column():
+                            map_prompt_template = gr.inputs.Textbox(label="Map Prompt Template", default=MAP_PROMPT_TEMPLATE, lines=5)
+                        with gr.Column():
+                            combine_prompt_template = gr.inputs.Textbox(label="Combine Prompt Template", default=COMBINE_PROMPT_TEMPLATE, lines=5)
+                    with gr.Tab(label="Refine Options") as refine_tab:
+                        with gr.Column():
+                            refine_initial_prompt_template = gr.inputs.Textbox(label="Initial Prompt Template", default=PROPOSAL_REFINE_INITIAL_TEMPLATE, lines=5)
+                        with gr.Column():
+                            refine_prompt_template = gr.inputs.Textbox(label="Refine Prompt Template", default=PROPOSAL_REFINE_TEMPLATE, lines=5)
+
             with gr.Row(label="Question Answering Options"):
                 with gr.Column():
-                    query_prompt_template = gr.inputs.Textbox(label="Query Prompt Template", default=QUERY_PROMPT_TEMPLATE)
-      
+                    query_prompt_template = gr.inputs.Textbox(label="Query Prompt Template", default=QUERY_PROMPT_TEMPLATE, lines=5)
+
+        templates = gr.State({
+            'map_prompt_template': map_prompt_template,
+            'combine_prompt_template': combine_prompt_template,
+            'refine_initial_prompt_template': refine_initial_prompt_template,
+            'refine_prompt_template': refine_prompt_template,
+            'query_prompt_template': query_prompt_template,
+            })
+        
+        
         # * Trigger the events
+        def update_tabs(summary_option, map_reduce_tab, refine_tab):
+            if summary_option == 'map_reduced':
+                return gr.update(map_reduce_tab, visible=True), gr.update(refine_tab, visible=False)
+            else:
+                return gr.update(map_reduce_tab, visible=False), gr.update(refine_tab, visible=True)
+            
+        summary_option.change(
+            fn=update_tabs,
+            inputs=[summary_option, map_reduce_tab, refine_tab],
+            outputs=[map_reduce_tab, refine_tab])
+
         summary_btn.click(
             fn=partial(summarize_document, doc_reader, debug=True),
-            inputs=[file_input, map_prompt_template, combine_prompt_template],
+            inputs=[file_input, templates, summary_option],
             outputs=[chunks_summary_output, summary_output],
         )
 

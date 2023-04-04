@@ -22,3 +22,71 @@ QUERY_PROMPT_TEMPLATE = """阅读以下内容来回答问题。 如果你不知�
 问题: {question}
 答案:
 """
+
+proposal_summary_format = """
+# Project title
+## Goals 
+## Problem statement
+## State-of-the-art
+## Dataset
+    - size, 
+    - modality, 
+    - labels, 
+    - sample data visualization, 
+    - justify the dataset is statistically significant
+## Methods 
+## Steps, timetable, and alternatives 
+## Expected outcome and validation method 
+## Citations (optional)
+"""
+
+PROPOSAL_REFINE_INITIAL_TEMPLATE = """You are acting as a restrict proposal reviewer. Please read the following proposal and provide a concise summary of the proposal into the following contents (report N/A if the proposal doesn't mention), with a clear Markdown format with the following template:
+
+# Project title
+## Goals 
+## Problem statement
+## State-of-the-art
+## Dataset
+    - size, 
+    - modality, 
+    - labels, 
+    - sample data visualization, 
+    - justify the dataset is statistically significant
+## Methods 
+## Steps, timetable, and alternatives 
+## Expected outcome and validation method 
+## Citations (optional)
+
+Here is the proposal:
+"{text}"
+
+CONCISE SUMMARY:"""
+
+
+
+PROPOSAL_REFINE_TEMPLATE = """You are acting as a restrict proposal reviewer. Your job is to produce a final summary of the proposal into the following contents (report N/A if the proposal doesn't mention), with a clear Markdown format with the following template:
+
+# Project title
+## Goals 
+## Problem statement
+## State-of-the-art
+## Dataset
+    - size, 
+    - modality, 
+    - labels, 
+    - sample data visualization, 
+    - justify the dataset is statistically significant
+## Methods 
+## Steps, timetable, and alternatives 
+## Expected outcome and validation method 
+## Citations (optional)
+
+We have provided an existing summary up to a certain point: {existing_answer}. 
+We have the opportunity to refine the existing summary (only if needed) with some more context below.
+
+--------------
+{text}
+--------------
+
+Given the new context, refine the original summary. If the context isn't useful, return the original summary.
+"""

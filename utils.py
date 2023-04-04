@@ -25,3 +25,22 @@ def hide_middle_chars(s):
         tail = s[-4:]
         hidden = "*" * (len(s) - 8)
         return head + hidden + tail
+
+
+def generate_side_by_side_html(chunk_summaries):
+    """ Generate the side-by-side HTML for the summary and the source document."""
+    
+    side_by_side_html = "<table style='width: 100%; border-collapse: collapse;'>"
+    for element in chunk_summaries:
+        chunk_content = element["chunk_content"]
+        summary = element["chunk_summary"]
+
+        html = "<p>" + chunk_content.replace("\n\n", "</p><p>").replace("\n", "<br>") + "</p>"
+
+        side_by_side_html += "<tr>"
+        side_by_side_html += f"<td style='width: 50%; padding: 10px; border: 1px solid #ccc;'>{html}</td>"
+        side_by_side_html += f"<td style='width: 50%; padding: 10px; border: 1px solid #ccc;'>{summary}</td>"
+        side_by_side_html += "</tr>"
+    side_by_side_html += "</table>"
+
+    return side_by_side_html

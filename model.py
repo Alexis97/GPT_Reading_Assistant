@@ -29,7 +29,12 @@ class DocumentReader(object):
             debug=False
             ):
         """ This function loads a document. """
-        loader = UnstructuredWordDocumentLoader(doc_path)
+        if os.path.splitext(doc_path)[1] in ['.doc', '.docx']:
+            loader = UnstructuredWordDocumentLoader(doc_path)
+        elif os.path.splitext(doc_path)[1] in ['.pdf']:
+            loader = UnstructuredPDFLoader(doc_path)
+        else:
+            raise ValueError("Invalid document type: {}".format(os.path.splitext(doc_path)[1]))
         documents = loader.load()
         text_splitter = CharacterTextSplitter(chunk_size=chunk_size, chunk_overlap=chunk_overlap)
         chunks = text_splitter.split_documents(documents)
@@ -48,29 +53,62 @@ class DocumentReader(object):
     
     def summarize(
             self, chunks, 
-            map_prompt_template=MAP_PROMPT_TEMPLATE,
-            combine_prompt_template=COMBINE_PROMPT_TEMPLATE,
-            temperature=0.0, max_tokens=1000
+            # map_prompt_template=MAP_PROMPT_TEMPLATE,
+            # combine_prompt_template=COMBINE_PROMPT_TEMPLATE,
+            templates,
+            summary_option="map_reduce",
+            temperature=0.0, max_tokens=1000,
+            debug=False
             ):
         """ This function summarizes a document. """
-
-        map_prompt = PromptTemplate(template=map_prompt_template, input_variables=["text"])
-        combine_prompt = PromptTemplate(template=combine_prompt_template, input_variables=["text"])
-
+        # save the summaries
+        if summary_option == "map_reduced":
+            save_path = os.path.join(self.summary_dir, "total_summary.json")
+        elif summary_option == "refine":
+            save_path = os.path.join(self.summary_dir, "total_refine.json")
+        else:
+            raise ValueError("Invalid summary option: {}".format(summary_option))
+        
+        if debug and os.path.exists(save_path):
+            with open(save_path, "r") as f:
+                data = json.load(f)
+            return data["total_summary"], data["chunk_summaries"]
+        
+        # Setup the LLM
         llm = ChatOpenAI(
             model_name='gpt-3.5-turbo',
             temperature=temperature,
             max_tokens=max_tokens,
             )
         
-        chain = load_summarize_chain(
-            llm=llm, chain_type="map_reduce",
-            # prompt=PROMPT, 
-            map_prompt=map_prompt,
-            combine_prompt=combine_prompt,
-            verbose=True, 
-            return_intermediate_steps=True,
-        )
+        if summary_option == "map_reduce":
+            map_prompt_template = templates['map_prompt_template']
+            combine_prompt_template = templates['combine_prompt_template']
+            map_prompt = PromptTemplate(template=map_prompt_template, input_variables=["text"])
+            combine_prompt = PromptTemplate(template=combine_prompt_template, input_variables=["text"])
+
+            chain = load_summarize_chain(
+                llm=llm, chain_type="map_reduce",
+                map_prompt=map_prompt,
+                combine_prompt=combine_prompt,
+                verbose=True, 
+                return_intermediate_steps=True,
+            )
+        elif summary_option == "refine":
+            initial_prompt_template = templates['refine_initial_prompt_template']
+            refine_prompt_template = templates['refine_prompt_template']
+            initial_prompt = PromptTemplate(template=initial_prompt_template, input_variables=["text"])
+            refine_prompt = PromptTemplate(template=refine_prompt_template, input_variables=["existing_answer", "text"])
+
+            chain = load_summarize_chain(
+                llm=llm, chain_type="refine",
+                question_prompt=initial_prompt,
+                refine_prompt=refine_prompt,
+                verbose=True, 
+                return_intermediate_steps=True,
+            )
+        else:
+            raise ValueError("Invalid summary option: {}".format(summary_option))
 
         result = chain({"input_documents": chunks})
         
@@ -80,8 +118,7 @@ class DocumentReader(object):
         for chunk_doc, chunk_summary in zip(chunks, result["intermediate_steps"]):
             chunk_summaries.append({'chunk_content': chunk_doc.page_content, 'chunk_summary': chunk_summary})
 
-        # save the summaries
-        with open(os.path.join(self.summary_dir, "total_summary.json"), "w") as f:
+        with open(save_path, "w") as f:
             data = {
                 "total_summary": total_summary,
                 "chunk_summaries": chunk_summaries,
@@ -123,5 +160,46 @@ class DocumentReader(object):
 
         return answer, source_chunks
 
+    def refine(
+            self, chunks, 
+            initial_prompt_template=PROPOSAL_REFINE_INITIAL_TEMPLATE,
+            refine_prompt_template=PROPOSAL_REFINE_TEMPLATE,
+            temperature=0.0, max_tokens=1000
+            ):
+        """ This function calls the refine chain to refine the document. """
 
+        initial_prompt = PromptTemplate(template=initial_prompt_template, input_variables=["text"])
+        refine_prompt = PromptTemplate(template=refine_prompt_template, input_variables=["existing_answer", "text"])
 
+        llm = ChatOpenAI(
+            model_name='gpt-3.5-turbo',
+            temperature=temperature,
+            max_tokens=max_tokens,
+            )
+        
+        chain = load_summarize_chain(
+            llm=llm, chain_type="refine",
+            # prompt=PROMPT, 
+            question_prompt=initial_prompt,
+            refine_prompt=refine_prompt,
+            verbose=True, 
+            return_intermediate_steps=True,
+        )
+
+        result = chain({"input_documents": chunks})
+
+        total_summary = result["output_text"]
+
+        chunk_summaries = []
+        for chunk_doc, chunk_summary in zip(chunks, result["intermediate_steps"]):
+            chunk_summaries.append({'chunk_content': chunk_doc.page_content, 'chunk_summary': chunk_summary})
+        
+        # save the summaries
+        with open(os.path.join(self.summary_dir, "total_refine.json"), "w") as f:
+            data = {
+                "total_summary": total_summary,
+                "chunk_summaries": chunk_summaries,
+            }
+            json.dump(data, f, indent=4, ensure_ascii=False)
+        
+        return total_summary, chunk_summaries
