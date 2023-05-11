@@ -42,48 +42,45 @@ proposal_summary_format = """
 ## Citations (optional)
 """
 
-PROPOSAL_REFINE_INITIAL_TEMPLATE = """You are acting as a restrict proposal reviewer. Please read the following proposal and provide a concise summary of the proposal into the following contents (report N/A if the proposal doesn't mention), with a clear Markdown format with the following template:
+PROPOSAL_REFINE_INITIAL_TEMPLATE = """You are acting as a project reviewer. Please read the following piece of the presentation and provide a concise summary of the project into the following contents (report N/A if the proposal doesn't mention), with a clear Markdown format with the following template:
 
-# Project title
-## Goals 
-## Problem statement
-## State-of-the-art
-## Dataset
-    - size, 
-    - modality, 
-    - labels, 
-    - sample data visualization, 
-    - justify the dataset is statistically significant
-## Methods 
-## Steps, timetable, and alternatives 
-## Expected outcome and validation method 
-## Citations (optional)
+## Title
+### Abstract 
+    Supervised/Unsupervised, Model description (regression/classification/other), Main results, etc.
+### Introduction 
+    Background, Goal/Motivation, Data resource, Existing work & state of the art, What's new against baseline/SOTA?, etc.
+### Data 
+    Data description, data size, show examples, show distributions by class, data augmentation details if any, justification for data set size, etc.
+### Method 
+    Describe the ML approach in detail, training/testing sizes, split ratio, # of splits for cross-validation, state loss/evaluation/optimization function used, show a flowchart, etc.
+### Quantitative Evaluation 
+    Quantitative comparison results against the baseline, mean and standard deviation of the overall (from multiple data splits) and PER CLASS classification/regression results, report Train/Validation/Test Results, provide one (or more) SAMPLE (representative) confusion matrix, and illustrate the most confused class-pairs, visualization of the most discriminative features/statistics, visualize class separations if applicable, etc.
+### Discussion and Future work 
 
-Here is the proposal:
+Here is the piece of the presentation:
 "{text}"
 
 CONCISE SUMMARY:"""
 
 
 
-PROPOSAL_REFINE_TEMPLATE = """You are acting as a restrict proposal reviewer. Your job is to produce a final summary of the proposal into the following contents (report N/A if the proposal doesn't mention), with a clear Markdown format with the following template:
+PROPOSAL_REFINE_TEMPLATE = """You are acting as a project reviewer. Your job is to produce a final summary of the presentation into the following contents (report N/A if the presentation doesn't mention), with a clear Markdown format with the following template:
 
-# Project title
-## Goals 
-## Problem statement
-## State-of-the-art
-## Dataset
-    - size, 
-    - modality, 
-    - labels, 
-    - sample data visualization, 
-    - justify the dataset is statistically significant
-## Methods 
-## Steps, timetable, and alternatives 
-## Expected outcome and validation method 
-## Citations (optional)
+## Title
+### Abstract 
+    Supervised/Unsupervised, Model description (regression/classification/other), Main results, etc.
+### Introduction 
+    Background, Goal/Motivation, Data resource, Existing work & state of the art, What's new against baseline/SOTA?, etc.
+### Data 
+    Data description, data size, show examples, show distributions by class, data augmentation details if any, justification for data set size, etc.
+### Method 
+    Describe the ML approach in detail, training/testing sizes, split ratio, # of splits for cross-validation, state loss/evaluation/optimization function used, show a flowchart, etc.
+### Quantitative Evaluation 
+    Quantitative comparison results against the baseline, mean and standard deviation of the overall (from multiple data splits) and PER CLASS classification/regression results, report Train/Validation/Test Results, provide one (or more) SAMPLE (representative) confusion matrix, and illustrate the most confused class-pairs, visualization of the most discriminative features/statistics, visualize class separations if applicable, etc.
+### Discussion and Future work 
 
 We have provided an existing summary up to a certain point: {existing_answer}. 
+
 We have the opportunity to refine the existing summary (only if needed) with some more context below.
 
 --------------

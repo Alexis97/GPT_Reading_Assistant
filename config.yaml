@@ -1,0 +1,10 @@
+chat_model:
+  basic:
+    temperature: 0.0
+    max_tokens: 1000
+
+  advanced:
+    prompt_templates:
+      - "Please summarize the following text:"
+      - "Provide a brief summary of the following:"
+    chunk_size: 2048

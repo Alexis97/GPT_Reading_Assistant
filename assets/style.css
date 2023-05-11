@@ -1,4 +1,5 @@
 .output {
     height: 80vh;
     overflow-y:auto;
+    word-wrap: break-word;
 }

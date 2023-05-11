@@ -8,8 +8,9 @@ from langchain.chains import RetrievalQA
 
 from langchain.embeddings.openai import OpenAIEmbeddings
 from langchain.vectorstores import Chroma
-from langchain.text_splitter import CharacterTextSplitter
+from langchain.text_splitter import CharacterTextSplitter, TokenTextSplitter
 from langchain.document_loaders import * 
+from langchain.docstore.document import Document
 
 from prompts import * 
 
@@ -24,20 +25,32 @@ class DocumentReader(object):
         os.makedirs(self.summary_dir, exist_ok=True)
         
     def load(
-            self, doc_path, collection_name='langchain',
+            self, doc_path, text=None,
+            collection_name='langchain',
             db_dir='db', chunk_size=1000, chunk_overlap=0,
-            debug=False
+            debug=False,
             ):
         """ This function loads a document. """
-        if os.path.splitext(doc_path)[1] in ['.doc', '.docx']:
-            loader = UnstructuredWordDocumentLoader(doc_path)
-        elif os.path.splitext(doc_path)[1] in ['.pdf']:
-            loader = UnstructuredPDFLoader(doc_path)
+        # text_splitter = CharacterTextSplitter.from_tiktoken_encoder(chunk_size=chunk_size, chunk_overlap=chunk_overlap)
+        text_splitter = TokenTextSplitter(chunk_size=chunk_size, chunk_overlap=chunk_overlap)
+
+        if text is not None and len(text) > 0:
+            # convert the text into a Document object
+            # text_doc = Document(page_content=text)
+      
+            texts = text_splitter.split_text(text)
+            chunks = [Document(page_content=chunk) for chunk in texts]
         else:
-            raise ValueError("Invalid document type: {}".format(os.path.splitext(doc_path)[1]))
-        documents = loader.load()
-        text_splitter = CharacterTextSplitter(chunk_size=chunk_size, chunk_overlap=chunk_overlap)
-        chunks = text_splitter.split_documents(documents)
+            loader = UnstructuredFileLoader(doc_path)
+            # if os.path.splitext(doc_path)[1] in ['.doc', '.docx']:
+            #     loader = UnstructuredWordDocumentLoader(doc_path)
+            # elif os.path.splitext(doc_path)[1] in ['.pdf']:
+            #     loader = UnstructuredPDFLoader(doc_path)
+            # else:
+            #     raise ValueError("Invalid document type: {}".format(os.path.splitext(doc_path)[1]))
+            documents = loader.load()
+            
+            chunks = text_splitter.split_documents(documents)
 
         embedding = OpenAIEmbeddings(model='text-embedding-ada-002')
 
@@ -58,7 +71,7 @@ class DocumentReader(object):
             templates,
             summary_option="map_reduce",
             temperature=0.0, max_tokens=1000,
-            debug=False
+            debug=False,
             ):
         """ This function summarizes a document. """
         # save the summaries
@@ -146,18 +159,18 @@ class DocumentReader(object):
         return total_summary, chunk_summaries
     
     def ask(
-            self, query, vectordb,
-            query_prompt_template=QUERY_PROMPT_TEMPLATE,
-            temperature=0.0, max_tokens=1000
+            self, query, vectordb, templates,
+            temperature=0.0, max_tokens=1000,
+            debug=False,
             ):
         """ This function asks a question and returns the answer from the document. """
-
         llm = ChatOpenAI(
             model_name='gpt-3.5-turbo',
             temperature=temperature,
             max_tokens=max_tokens,
             )
         
+        query_prompt_template = templates['query_prompt_template']
         query_prompt = PromptTemplate(
             template=query_prompt_template, input_variables=["context", "question"]
         )
@@ -178,3 +191,18 @@ class DocumentReader(object):
 
         return answer, source_chunks
 
+    def translate(
+            self, chunks,
+            templates,
+            temperature=0.0, max_tokens=None,
+            debug=False
+            ):  
+        """ This function translates a document. """
+
+        # Setup the LLM
+        llm = ChatOpenAI(
+            model_name='gpt-3.5-turbo',
+            temperature=temperature,
+            max_tokens=max_tokens,
+            )
+        

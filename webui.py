@@ -1,9 +1,6 @@
 ###
 import gradio as gr
 import os, json 
-
-from bs4 import BeautifulSoup
-
 from functools import partial
 
 
@@ -12,20 +9,40 @@ from utils import *
 from prompts import * 
 ###
 
+templates = {       # Global variable to store the templates
+    "map_prompt_template": MAP_PROMPT_TEMPLATE,
+    "combine_prompt_template": COMBINE_PROMPT_TEMPLATE,
+    "refine_initial_prompt_template": PROPOSAL_REFINE_INITIAL_TEMPLATE,
+    "refine_prompt_template": PROPOSAL_REFINE_TEMPLATE,
+    "translate_prompt_template": TRANSLATE_PROMPT_TEMPLATE,
+    "query_prompt_template": QUERY_PROMPT_TEMPLATE,
+}  
+
 def summarize_document(
-        doc_reader, file, templates, summary_option,
+        doc_reader, file, text, 
+        summary_option, chunk_size, temperature,
         debug=False
         ):
     """ This function summarizes a document. 
     
     """
+    global templates
     # Convert the templates from Gradio to a dictionary
-    templates_dict = {k: v.value for k, v in templates.items()}
+    # templates_dict = {k: v.value for k, v in templates.items()}
 
-    doc_path = file.name
+    doc_path = file.name if file is not None else None
+    text_str = text
     
-    chunks, vectordb = doc_reader.load(doc_path, debug=debug)
-    total_summary, chunk_summaries = doc_reader.summarize(chunks, templates_dict, summary_option=summary_option, debug=debug)
+    chunks, vectordb = doc_reader.load(
+        doc_path, text_str,
+        chunk_size=chunk_size,                               
+        debug=debug
+        )
+    total_summary, chunk_summaries = doc_reader.summarize(
+        chunks, templates, 
+        summary_option=summary_option, temperature=temperature,
+        debug=debug
+        )
 
     # Combine the original paragraphs and summaries side by side in HTML
     side_by_side_html = generate_side_by_side_html(chunk_summaries)
@@ -35,22 +52,28 @@ def summarize_document(
 
 
 def ask_document(
-        doc_reader, file, query, templates,
+        doc_reader, file, text, query, 
+        chunk_size, temperature,
         debug=False
         ):
     """ This function answers a question about a document.
     
     """
-    # Convert the templates from Gradio to a dictionary
-    templates_dict = {k: v.value for k, v in templates.items()}
+    global templates
 
-    doc_path = file.name
+    doc_path = file.name if file is not None else None
+    text_str = text
 
-    chunks, vectordb = doc_reader.load(doc_path, debug=debug)
+    chunks, vectordb = doc_reader.load(
+        doc_path, text_str,
+        chunk_size=chunk_size,                               
+        debug=debug
+        )
 
     answer, source_chunks = doc_reader.ask(
-        query, vectordb,
-        query_prompt_template=templates_dict['query_prompt_template'],
+        query, vectordb, templates,
+        temperature=temperature,
+        debug=debug,
         )
 
     # Combine the source document and answer side by side in HTML
@@ -68,6 +91,13 @@ def ask_document(
 
     return side_by_side_html, answer
 
+def update_prompt_templates(key, value):
+    global templates
+    templates[key] = value
+
+# def update_prompt_templates(element):
+#     global templates
+#     print (element)
 
 def main():
     # * Initialize the document reader
@@ -80,6 +110,9 @@ def main():
         with gr.Row():
             with gr.Column():
                 file_input = gr.inputs.File(label="Upload Document")
+
+            with gr.Column():
+                text_input = gr.inputs.Textbox(label="Or Paste Text", lines=10)
            
         with gr.Tab(label="Summarize"):
             with gr.Row(scale=1):
@@ -115,45 +148,64 @@ def main():
         # templates = gr.State({})
         
         with gr.Tab(label="Options"):
+            with gr.Row(label="Model Options"):
+                with gr.Column():
+                    chunk_size = gr.Slider(
+                        label="Chunk Size",
+                        minimum=100, maximum=3000, step=100,
+                        value=1000, interactive=True,
+                        )
+                    temperature = gr.Slider(
+                        label="Temperature",
+                        minimum=0.0, maximum=1.0, step=0.01,
+                        value=0.0, interactive=True,
+                        )
+                    
             with gr.Row(label="Summarization Options"):
                 with gr.Row():
-                    summary_option = gr.inputs.Radio(
+                    summary_option = gr.Radio(
                         label="Summary Option",
                         choices =['map_reduce', 'refine', 'translate'],
                         # label=["分段摘要", "逐步总结"],
-                        default="map_reduce",
+                        value="map_reduce", interactive=True,
                         )
                 with gr.Row():
                     
                     with gr.Tab(label="Map-Reduce Options") as map_reduce_tab:
                         with gr.Column():
-                            map_prompt_template = gr.Textbox(label="Map Prompt Template", value=MAP_PROMPT_TEMPLATE, lines=5, interactive=True)
+                            map_prompt_template = gr.Textbox(label="Map Prompt Template", value=MAP_PROMPT_TEMPLATE, lines=5, interactive=True, on_change=lambda value: update_prompt_templates("map_prompt_template", value))
+                            map_prompt_template.change(update_prompt_templates, map_prompt_template)
                         with gr.Column():
-                            combine_prompt_template = gr.Textbox(label="Combine Prompt Template", value=COMBINE_PROMPT_TEMPLATE, lines=5, interactive=True)
+                            combine_prompt_template = gr.Textbox(label="Combine Prompt Template", value=COMBINE_PROMPT_TEMPLATE, lines=5, interactive=True, on_change=lambda value: update_prompt_templates("combine_prompt_template", value))
                     with gr.Tab(label="Refine Options") as refine_tab:
                         with gr.Column():
-                            refine_initial_prompt_template = gr.Textbox(label="Initial Prompt Template", value=PROPOSAL_REFINE_INITIAL_TEMPLATE, lines=5, interactive=True)
+                            refine_initial_prompt_template = gr.Textbox(label="Initial Prompt Template", value=PROPOSAL_REFINE_INITIAL_TEMPLATE, lines=5, interactive=True, on_change=lambda value: update_prompt_templates("refine_initial_prompt_template", value))
                         with gr.Column():
-                            refine_prompt_template = gr.Textbox(label="Refine Prompt Template", value=PROPOSAL_REFINE_TEMPLATE, lines=5, interactive=True)
+                            refine_prompt_template = gr.Textbox(label="Refine Prompt Template", value=PROPOSAL_REFINE_TEMPLATE, lines=5, interactive=True, on_change=lambda value: update_prompt_templates("refine_prompt_template", value))
 
                     with gr.Tab(label="Trasnlation Options"):
                         with gr.Column():
-                            translate_prompt_template = gr.Textbox(label="Translate Prompt Template", value=TRANSLATE_PROMPT_TEMPLATE, lines=5, interactive=True)
+                            translate_prompt_template = gr.Textbox(label="Translate Prompt Template", value=TRANSLATE_PROMPT_TEMPLATE, lines=5, interactive=True, on_change=lambda value: update_prompt_templates("translate_prompt_template", value))
 
 
                     with gr.Tab(label="Question Answering Options"):
                         with gr.Column():
-                            query_prompt_template = gr.Textbox(label="Query Prompt Template", value=QUERY_PROMPT_TEMPLATE, lines=5)
+                            query_prompt_template = gr.Textbox(label="Query Prompt Template", value=QUERY_PROMPT_TEMPLATE, lines=5, interactive=True, on_change=lambda value: update_prompt_templates("query_prompt_template", value))  
 
-        templates = gr.State({
-            'map_prompt_template': map_prompt_template,
-            'combine_prompt_template': combine_prompt_template,
-            'refine_initial_prompt_template': refine_initial_prompt_template,
-            'refine_prompt_template': refine_prompt_template,
-            'translate_prompt_template': translate_prompt_template,
-            'query_prompt_template': query_prompt_template,
-            })
-        
+        # templates = {map_prompt_template, combine_prompt_template, refine_initial_prompt_template, refine_prompt_template, translate_prompt_template, query_prompt_template}
+
+        # form = gr.inputs.Form([
+        #     gr.inputs.Textbox(label="Name"),
+        #     gr.inputs.Slider(label="Age", minimum=0, maximum=120)
+        # ])
+        # templates = gr.State({
+        #     'map_prompt_template': map_prompt_template,
+        #     'combine_prompt_template': combine_prompt_template,
+        #     'refine_initial_prompt_template': refine_initial_prompt_template,
+        #     'refine_prompt_template': refine_prompt_template,
+        #     'translate_prompt_template': translate_prompt_template,
+        #     'query_prompt_template': query_prompt_template,
+        #     })
         
         # * Trigger the events
         # def update_tabs(summary_option, map_reduce_tab, refine_tab):
@@ -169,13 +221,13 @@ def main():
 
         summary_btn.click(
             fn=partial(summarize_document, doc_reader, debug=False),
-            inputs=[file_input, templates, summary_option],
+            inputs=[file_input, text_input, summary_option, chunk_size, temperature],
             outputs=[chunks_summary_output, summary_output],
         )
 
         ask_btn.click(
             fn=partial(ask_document, doc_reader, debug=False),
-            inputs=[file_input, ask_input, query_prompt_template],
+            inputs=[file_input, text_input, ask_input, chunk_size, temperature],
             outputs=[chunks_ask_output, ask_output],
         )
 
