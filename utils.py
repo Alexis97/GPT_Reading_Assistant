@@ -5,7 +5,8 @@ import mistune
 import bleach
 import html
 import re
-from mistune.renderers import HTMLRenderer
+from mistune import HTMLRenderer
+
 
 # * Set up the port
 def find_free_port():
@@ -14,7 +15,7 @@ def find_free_port():
         s.bind(('', 0))
         s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
         return s.getsockname()[1]
-    
+
 def auto_opentab_delay(port):
     """ Open a new tab in the browser after a delay. """
     def open(): time.sleep(2)
@@ -52,7 +53,7 @@ def remove_code_blocks(text):
 
     # Remove leading spaces to avoid treating them as code blocks
     text = '\n'.join([line.lstrip() for line in text.split('\n')])
-    
+
     return text
 
 
